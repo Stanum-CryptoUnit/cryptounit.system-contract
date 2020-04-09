@@ -448,7 +448,7 @@ namespace eosiosystem {
          m.supply.symbol = ramcore_symbol;
          m.base.balance.amount = int64_t(_gstate.free_ram());
          m.base.balance.symbol = ram_symbol;
-         m.quote.balance.amount = system_token_supply.amount / 1000;
+         m.quote.balance.amount = system_token_supply.amount / 100;
          m.quote.balance.symbol = core;
       });
 
