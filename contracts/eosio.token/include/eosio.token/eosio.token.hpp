@@ -46,6 +46,14 @@ namespace eosio {
             return st.supply;
          }
 
+         static asset get_max_supply( name token_contract_account, symbol_code sym_code )
+         {
+            stats statstable( token_contract_account, sym_code.raw() );
+            const auto& st = statstable.get( sym_code.raw() );
+            return st.max_supply;
+         }
+
+
          static asset get_balance( name token_contract_account, name owner, symbol_code sym_code )
          {
             accounts accountstable( token_contract_account, owner.value );
