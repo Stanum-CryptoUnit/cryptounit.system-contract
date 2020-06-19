@@ -110,19 +110,19 @@ namespace eosiosystem {
          time_point right_time_border = get_right_time_border(st->last_update_at);
          time_point left_time_border = get_left_time_border(st->last_update_at);
          uint64_t emission_rate = get_emission_rate(left_time_border);
-         print("emission_rate", emission_rate);
+         print("emission_rate:", emission_rate, ";");
 
          auto to_producers     = emission_rate / 20; //5%
          auto to_stakers       = emission_rate - to_producers; //95%
          
 
          auto total_emission_in_period = asset(to_stakers * total_cliffs_in_period, _emit_symbol);
-         print(" total_emission_in_period: ", total_emission_in_period);
+         print("total_emission_in_period:", total_emission_in_period, ";");
 
          auto user_last_position = st->last_update_at > left_time_border ? st->last_update_at : left_time_border;
          
          auto user_cliffs_in_period = ((right_time_border - user_last_position)).count() / usecs_block_period;
-         print(" user_cliffs_in_period: ", user_cliffs_in_period);
+         print("user_cliffs_in_period:", user_cliffs_in_period, ";");
 
          auto user_share_in_segments = st->staked_balance.amount / _gstate4.total_stakers_balance.amount * _total_segments;
          
@@ -130,9 +130,9 @@ namespace eosiosystem {
 
          asset user_emission_in_period = asset((uint64_t)user_emission_in_period_in_segments / _total_segments, _emit_symbol);
          
-         print(" stakers_bucket NOW: ", _gstate4.stakers_bucket);
+         print("stakers_bucket_now:", _gstate4.stakers_bucket, ";");
 
-         print(" user_emission_in_period: ", user_emission_in_period);
+         print("user_emission_in_period:", user_emission_in_period, ";");
 
 
          stakers_instance.modify(st, username, [&](auto &s){
@@ -144,7 +144,7 @@ namespace eosiosystem {
          check(user_emission_in_period <= _gstate4.stakers_bucket, "System error");
 
          _gstate4.stakers_bucket -= user_emission_in_period;
-         print(" stakers_bucket UPDATED: ", _gstate4.stakers_bucket);
+         print("stakers_bucket_updated:", _gstate4.stakers_bucket, ";");
       
       }
    }
@@ -161,9 +161,11 @@ namespace eosiosystem {
 
       system_contract::refresh(username);
 
+      auto st = stakers_instance.find(username.value);
+      
       check(st -> last_update_at == current_time_point(), "Impossible to stake before full refresh balance.");
 
-      auto st = stakers_instance.find(username.value);
+      
 
       if (st == stakers_instance.end()){
          stakers_instance.emplace(_self, [&](auto &s){
