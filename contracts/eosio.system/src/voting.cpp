@@ -230,12 +230,7 @@ namespace eosiosystem {
        * after the chain has been activated, we can use last_vote_weight to determine that this is
        * their first vote and should consider their stake activated.
        */
-      if( _gstate.thresh_activated_stake_time == time_point() && voter->last_vote_weight <= 0.0 ) {
-         _gstate.total_activated_stake += voter->staked;
-         if( _gstate.total_activated_stake >= min_activated_stake ) {
-            _gstate.thresh_activated_stake_time = current_time_point();
-         }
-      }
+
 
       auto new_vote_weight = stake2vote( voter->staked );
       if( voter->is_proxy ) {
@@ -388,6 +383,7 @@ namespace eosiosystem {
                   bool updated_after_threshold = (last_claim_plus_3days <= prod2->last_votepay_share_update);
                   // Note: updated_after_threshold implies cross_threshold
 
+                  
                   double new_votepay_share = update_producer_votepay_share( prod2,
                                                 ct,
                                                 updated_after_threshold ? 0.0 : init_total_votes,

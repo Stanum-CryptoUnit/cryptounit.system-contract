@@ -3,9 +3,12 @@
 
 namespace eosiosystem {
 
+
    using eosio::current_time_point;
    using eosio::microseconds;
    using eosio::token;
+
+
 
    void system_contract::onblock( ignore<block_header> ) {
       using namespace eosio;
@@ -21,13 +24,18 @@ namespace eosiosystem {
       // is eventually completely removed, at which point this line can be removed.
       _gstate2.last_block_num = timestamp;
 
-      /** until activation, no new rewards are paid */
-      if( _gstate.thresh_activated_stake_time == time_point() )
+
+      if( (_gstate.thresh_activated_stake_time == time_point({ microseconds{0}}))  
+         || (_gstate.thresh_activated_stake_time >= current_time_point() ))
+      {
          return;
+      } 
 
       if( _gstate.last_pervote_bucket_fill == time_point() )  /// start the presses
          _gstate.last_pervote_bucket_fill = current_time_point();
 
+
+      emit_to_buckets();
 
       /**
        * At startup the initial producer may not be one that is registered / elected
@@ -37,7 +45,7 @@ namespace eosiosystem {
       if ( prod != _producers.end() ) {
          _gstate.total_unpaid_blocks++;
          _producers.modify( prod, same_payer, [&](auto& p ) {
-               p.unpaid_blocks++;
+            p.unpaid_blocks++;
          });
       }
 
@@ -52,8 +60,7 @@ namespace eosiosystem {
             if( highest != idx.end() &&
                 highest->high_bid > 0 &&
                 (current_time_point() - highest->last_bid_time) > microseconds(useconds_per_day) &&
-                _gstate.thresh_activated_stake_time > time_point() &&
-                (current_time_point() - _gstate.thresh_activated_stake_time) > microseconds(14 * useconds_per_day)
+                _gstate.thresh_activated_stake_time > time_point()
             ) {
                _gstate.last_name_close = timestamp;
                channel_namebid_to_rex( highest->high_bid );
@@ -65,58 +72,89 @@ namespace eosiosystem {
       }
    }
 
-   void system_contract::claimrewards( const name& owner ) {
+
+   using namespace eosio;
+
+
+      void system_contract::emit_to_buckets(){
+      auto ct = current_time_point();
+
+
+      const asset token_supply   = eosio::token::get_supply(token_account, core_symbol().code() );
+      const asset max_supply = eosio::token::get_max_supply(token_account, core_symbol().code() ); 
+
+      const auto usecs_since_last_fill = (ct - _gstate.last_pervote_bucket_fill).count();
+      print(" usecs_since_last_fill: ", usecs_since_last_fill);
+      if( usecs_since_last_fill > 0 ) {
+         
+         time_point ct_minus_block = time_point{microseconds{static_cast<int64_t>((ct - time_point{ microseconds{usecs_block_period}}).count())}};
+
+         auto emission_rate = get_emission_rate(ct_minus_block); //time3
+         print(" emission_rate", emission_rate);
+         uint64_t new_tokens;
+
+         if (token_supply.amount + emission_rate <= max_supply.amount){
+
+            new_tokens = emission_rate;
+         
+         } else {
+
+            new_tokens = max_supply.amount - token_supply.amount;
+
+         }
+
+         if (new_tokens > 0){    
+            auto to_producers     = new_tokens / 20;
+            auto to_savings       = new_tokens - to_producers;
+            auto to_per_block_pay = to_producers / 4;
+            auto to_per_vote_pay  = to_producers - to_per_block_pay;
+
+            INLINE_ACTION_SENDER(eosio::token, issue)(
+               token_account, { {_self, active_permission} },
+               { _self, asset(new_tokens, core_symbol()), std::string("issue tokens for producer pay and savings") }
+            );
+
+            INLINE_ACTION_SENDER(eosio::token, transfer)(
+               token_account, { {_self, active_permission} },
+               { _self, saving_account, asset(to_savings, core_symbol()), "unallocated inflation" }
+            );
+
+            INLINE_ACTION_SENDER(eosio::token, transfer)(
+               token_account, { {_self, active_permission} },
+               { _self, bpay_account, asset(to_per_block_pay, core_symbol()), "fund per-block bucket" }
+            );
+
+            INLINE_ACTION_SENDER(eosio::token, transfer)(
+               token_account, { {_self, active_permission} },
+               { _self, vpay_account, asset(to_per_vote_pay, core_symbol()), "fund per-vote bucket" }
+            );
+            
+            _gstate.pervote_bucket          += to_per_vote_pay;
+            _gstate.perblock_bucket         += to_per_block_pay;
+            _gstate.last_pervote_bucket_fill = ct;
+
+            _gstate4.stakers_bucket += asset(to_savings, core_symbol());
+         }
+      }
+   }
+
+
+   void system_contract::claimrewards( const name owner ) {
       require_auth( owner );
 
       const auto& prod = _producers.get( owner.value );
       check( prod.active(), "producer does not have an active key" );
 
-      check( _gstate.thresh_activated_stake_time != time_point(),
-                    "cannot claim rewards until the chain is activated (at least 15% of all tokens participate in voting)" );
-
       const auto ct = current_time_point();
 
-      check( ct - prod.last_claim_time > microseconds(useconds_per_day), "already claimed rewards within past day" );
+      check((_gstate.thresh_activated_stake_time != time_point{ microseconds{0}})
+         || (_gstate.thresh_activated_stake_time <= ct), "cannot claim rewards until chain is activated" );
 
-      const asset token_supply   = token::get_supply(token_account, core_symbol().code() );
-      const auto usecs_since_last_fill = (ct - _gstate.last_pervote_bucket_fill).count();
-
-      if( usecs_since_last_fill > 0 && _gstate.last_pervote_bucket_fill > time_point() ) {
-         double additional_inflation = (_gstate4.continuous_rate * double(token_supply.amount) * double(usecs_since_last_fill)) / double(useconds_per_year);
-         check( additional_inflation <= double(std::numeric_limits<int64_t>::max() - ((1ll << 10) - 1)),
-                "overflow in calculating new tokens to be issued; inflation rate is too high" );
-         int64_t new_tokens = (additional_inflation < 0.0) ? 0 : static_cast<int64_t>(additional_inflation);
-
-         int64_t to_producers     = (new_tokens * uint128_t(pay_factor_precision)) / _gstate4.inflation_pay_factor;
-         int64_t to_savings       = new_tokens - to_producers;
-         int64_t to_per_block_pay = (to_producers * uint128_t(pay_factor_precision)) / _gstate4.votepay_factor;
-         int64_t to_per_vote_pay  = to_producers - to_per_block_pay;
-
-         if( new_tokens > 0 ) {
-            {
-               token::issue_action issue_act{ token_account, { {get_self(), active_permission} } };
-               issue_act.send( get_self(), asset(new_tokens, core_symbol()), "issue tokens for producer pay and savings" );
-            }
-            {
-               token::transfer_action transfer_act{ token_account, { {get_self(), active_permission} } };
-               if( to_savings > 0 ) {
-                  transfer_act.send( get_self(), saving_account, asset(to_savings, core_symbol()), "unallocated inflation" );
-               }
-               if( to_per_block_pay > 0 ) {
-                  transfer_act.send( get_self(), bpay_account, asset(to_per_block_pay, core_symbol()), "fund per-block bucket" );
-               }
-               if( to_per_vote_pay > 0 ) {
-                  transfer_act.send( get_self(), vpay_account, asset(to_per_vote_pay, core_symbol()), "fund per-vote bucket" );
-               }
-            }
-         }
-
-         _gstate.pervote_bucket          += to_per_vote_pay;
-         _gstate.perblock_bucket         += to_per_block_pay;
-         _gstate.last_pervote_bucket_fill = ct;
-      }
+      
+      // check( ct - prod.last_claim_time > microseconds(useconds_per_day), "already claimed rewards within past day" );
 
       auto prod2 = _producers2.find( owner.value );
+
 
       /// New metric to be used in pervote pay calculation. Instead of vote weight ratio, we combine vote weight and
       /// time duration the vote weight has been held into one metric.

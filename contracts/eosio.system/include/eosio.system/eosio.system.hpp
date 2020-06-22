@@ -66,6 +66,10 @@ namespace eosiosystem {
    static constexpr int64_t  useconds_per_day      = int64_t(seconds_per_day) * 1000'000ll;
    static constexpr int64_t  useconds_per_hour     = int64_t(seconds_per_hour) * 1000'000ll;
    static constexpr uint32_t blocks_per_day        = 2 * seconds_per_day; // half seconds per day
+   static constexpr uint32_t blocks_per_year       = 52*7*24*2*3600;   // half seconds per year
+   static constexpr uint32_t blocks_per_hour       = 2 * 3600;
+   static constexpr uint64_t usecs_block_period    = 500000; 
+
 
    static constexpr int64_t  min_activated_stake   = 150'000'000'0000;
    static constexpr int64_t  ram_gift_bytes        = 1400;
@@ -125,7 +129,7 @@ namespace eosiosystem {
    struct [[eosio::table("global"), eosio::contract("eosio.system")]] eosio_global_state : eosio::blockchain_parameters {
       uint64_t free_ram()const { return max_ram_size - total_ram_bytes_reserved; }
 
-      uint64_t             max_ram_size = 64ll*1024 * 1024 * 1024;
+      uint64_t             max_ram_size = 32ll*1024 * 1024 * 1024;
       uint64_t             total_ram_bytes_reserved = 0;
       int64_t              total_ram_stake = 0;
 
@@ -170,6 +174,32 @@ namespace eosiosystem {
 
       EOSLIB_SERIALIZE( eosio_global_state3, (last_vpay_state_update)(total_vpay_share_change_rate) )
    };
+  
+   struct [[eosio::table("global4"), eosio::contract("eosio.system")]] eosio_global_state4 {
+      eosio_global_state4() { }
+      
+      eosio::asset total_stakers_balance;
+      eosio::asset stakers_bucket;
+      
+
+      EOSLIB_SERIALIZE( eosio_global_state4, (total_stakers_balance)(stakers_bucket) )
+   };
+ 
+  struct [[eosio::table, eosio::contract("eosio.system")]] stakers {
+    eosio::name username;
+    eosio::time_point last_update_at;
+    eosio::asset staked_balance;
+    uint64_t     emitted_segments;
+    eosio::asset emitted_balance;
+
+    uint64_t primary_key() const {return username.value;}
+    
+    EOSLIB_SERIALIZE(stakers, (username)(last_update_at)(staked_balance)(emitted_segments)(emitted_balance))
+  };
+
+  typedef eosio::multi_index<"stakers"_n, stakers> stakers_index;
+    
+
 
    // Defines new global state parameters to store inflation rate and distribution
    struct [[eosio::table("global4"), eosio::contract("eosio.system")]] eosio_global_state4 {
@@ -319,6 +349,7 @@ namespace eosiosystem {
    typedef eosio::singleton< "global2"_n, eosio_global_state2 > global_state2_singleton;
 
    typedef eosio::singleton< "global3"_n, eosio_global_state3 > global_state3_singleton;
+   typedef eosio::singleton< "global4"_n, eosio_global_state4> global_state4_singleton;
 
    typedef eosio::singleton< "global4"_n, eosio_global_state4 > global_state4_singleton;
 
@@ -546,6 +577,7 @@ namespace eosiosystem {
          rex_fund_table           _rexfunds;
          rex_balance_table        _rexbalance;
          rex_order_table          _rexorders;
+
 
       public:
          static constexpr eosio::name active_permission{"active"_n};
@@ -1166,6 +1198,33 @@ namespace eosiosystem {
          [[eosio::action]]
          void setinflation( int64_t annual_rate, int64_t inflation_pay_factor, int64_t votepay_factor );
 
+         [[eosio::action]]
+         void activate( time_point_sec activate_at );
+
+         [[eosio::action]]
+         void stake(eosio::name username, eosio::asset quantity );
+
+         [[eosio::action]]
+         void unstake(eosio::name username, eosio::asset quantity );
+
+         [[eosio::action]]
+         void refresh(eosio::name username );
+   
+         [[eosio::action]]
+         void getreward(eosio::name username );
+
+
+
+         void emit_to_buckets();
+         uint64_t get_emission_rate(time_point right_time_border);
+
+         time_point get_right_time_border(time_point last_update);
+         time_point get_left_time_border(time_point last_update);
+         int64_t get_current_emission_step(time_point last_update);
+
+         using getreward_action = eosio::action_wrapper<"getreward"_n, &system_contract::getreward>;
+         using unstake_action = eosio::action_wrapper<"unstake"_n, &system_contract::unstake>;
+         using stake_action = eosio::action_wrapper<"stake"_n, &system_contract::stake>;
          using init_action = eosio::action_wrapper<"init"_n, &system_contract::init>;
          using setacctram_action = eosio::action_wrapper<"setacctram"_n, &system_contract::setacctram>;
          using setacctnet_action = eosio::action_wrapper<"setacctnet"_n, &system_contract::setacctnet>;

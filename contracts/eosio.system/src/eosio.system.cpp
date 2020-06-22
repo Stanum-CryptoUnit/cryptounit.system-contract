@@ -6,6 +6,7 @@
 
 #include <cmath>
 
+
 namespace eosiosystem {
 
    using eosio::current_time_point;
@@ -17,6 +18,7 @@ namespace eosiosystem {
 
    system_contract::system_contract( name s, name code, datastream<const char*> ds )
    :native(s,code,ds),
+
     _voters(get_self(), get_self().value),
     _producers(get_self(), get_self().value),
     _producers2(get_self(), get_self().value),
@@ -31,11 +33,12 @@ namespace eosiosystem {
     _rexfunds(get_self(), get_self().value),
     _rexbalance(get_self(), get_self().value),
     _rexorders(get_self(), get_self().value)
+
    {
       _gstate  = _global.exists() ? _global.get() : get_default_parameters();
       _gstate2 = _global2.exists() ? _global2.get() : eosio_global_state2{};
       _gstate3 = _global3.exists() ? _global3.get() : eosio_global_state3{};
-      _gstate4 = _global4.exists() ? _global4.get() : get_default_inflation_parameters();
+      _gstate4 = _global4.exists() ? _global4.get() : eosio_global_state4{};
    }
 
    eosio_global_state system_contract::get_default_parameters() {
@@ -389,7 +392,7 @@ namespace eosiosystem {
          m.supply.symbol = ramcore_symbol;
          m.base.balance.amount = int64_t(_gstate.free_ram());
          m.base.balance.symbol = ram_symbol;
-         m.quote.balance.amount = system_token_supply.amount / 1000;
+         m.quote.balance.amount = system_token_supply.amount / 100;
          m.quote.balance.symbol = core;
       });
 
@@ -398,3 +401,23 @@ namespace eosiosystem {
    }
 
 } /// eosio.system
+
+
+// EOSIO_DISPATCH( eosiosystem::system_contract,
+//      // native.hpp (newaccount definition is actually in eosio.system.cpp)
+//      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(setabi)
+//      // eosio.system.cpp
+//      (init)(setram)(setramrate)(setparams)(setpriv)(setalimits)(setacctram)(setacctnet)(setacctcpu)
+//      (rmvproducer)(updtrevision)(bidname)(bidrefund)
+//      // rex.cpp
+//      (deposit)(withdraw)(buyrex)(unstaketorex)(sellrex)(cnclrexorder)(rentcpu)(rentnet)(fundcpuloan)(fundnetloan)
+//      (defcpuloan)(defnetloan)(updaterex)(consolidate)(mvtosavings)(mvfrsavings)(setrex)(rexexec)(closerex)
+//      // delegate_bandwidth.cpp
+//      (buyrambytes)(buyram)(sellram)(delegatebw)(undelegatebw)(refund)
+//      // voting.cpp
+//      (regproducer)(unregprod)(voteproducer)(regproxy)
+//      // producer_pay.cpp
+//      (onblock)(claimrewards)
+//      //stake.cpp
+//      (activate)(stake)(unstake)(refresh)(getreward)
+// )
