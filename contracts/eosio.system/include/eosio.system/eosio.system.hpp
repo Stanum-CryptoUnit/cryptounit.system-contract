@@ -69,7 +69,10 @@ namespace eosiosystem {
    static constexpr uint32_t blocks_per_year       = 52*7*24*2*3600;   // half seconds per year
    static constexpr uint32_t blocks_per_hour       = 2 * 3600;
    static constexpr uint64_t usecs_block_period    = 500000; 
-
+   static constexpr double   continuous_rate       = 0.04879;          // 5% annual rate
+   static constexpr double   perblock_rate         = 0.0025;           // 0.25%
+   static constexpr double   standby_rate          = 0.0075;           // 0.75%
+   
 
    static constexpr int64_t  min_activated_stake   = 150'000'000'0000;
    static constexpr int64_t  ram_gift_bytes        = 1400;
@@ -175,15 +178,15 @@ namespace eosiosystem {
       EOSLIB_SERIALIZE( eosio_global_state3, (last_vpay_state_update)(total_vpay_share_change_rate) )
    };
   
-   struct [[eosio::table("global4"), eosio::contract("eosio.system")]] eosio_global_state4 {
-      eosio_global_state4() { }
+   // struct [[eosio::table("global5"), eosio::contract("eosio.system")]] eosio_global_state5 {
+   //    eosio_global_state5() { }
       
-      eosio::asset total_stakers_balance;
-      eosio::asset stakers_bucket;
+   //    eosio::asset total_stakers_balance;
+   //    eosio::asset stakers_bucket;
       
 
-      EOSLIB_SERIALIZE( eosio_global_state4, (total_stakers_balance)(stakers_bucket) )
-   };
+   //    EOSLIB_SERIALIZE( eosio_global_state4, (total_stakers_balance)(stakers_bucket) )
+   // };
  
   struct [[eosio::table, eosio::contract("eosio.system")]] stakers {
     eosio::name username;
@@ -204,11 +207,11 @@ namespace eosiosystem {
    // Defines new global state parameters to store inflation rate and distribution
    struct [[eosio::table("global4"), eosio::contract("eosio.system")]] eosio_global_state4 {
       eosio_global_state4() { }
-      double   continuous_rate;
-      int64_t  inflation_pay_factor;
-      int64_t  votepay_factor;
 
-      EOSLIB_SERIALIZE( eosio_global_state4, (continuous_rate)(inflation_pay_factor)(votepay_factor) )
+      eosio::asset total_stakers_balance;
+      eosio::asset stakers_bucket;
+      
+      EOSLIB_SERIALIZE( eosio_global_state4, (total_stakers_balance)(stakers_bucket))
    };
 
    inline eosio::block_signing_authority convert_to_block_signing_authority( const eosio::public_key& producer_key ) {
@@ -351,8 +354,8 @@ namespace eosiosystem {
    typedef eosio::singleton< "global3"_n, eosio_global_state3 > global_state3_singleton;
    typedef eosio::singleton< "global4"_n, eosio_global_state4> global_state4_singleton;
 
-   typedef eosio::singleton< "global4"_n, eosio_global_state4 > global_state4_singleton;
 
+   
    struct [[eosio::table, eosio::contract("eosio.system")]] user_resources {
       name          owner;
       asset         net_weight;
@@ -677,8 +680,8 @@ namespace eosiosystem {
           *
           * @param feature_digest - hash of the protocol feature to activate.
           */
-         [[eosio::action]]
-         void activate( const eosio::checksum256& feature_digest );
+         // [[eosio::action]]
+         // void activate( const eosio::checksum256& feature_digest );
 
          // functions defined in delegate_bandwidth.cpp
 
@@ -1195,11 +1198,9 @@ namespace eosiosystem {
           *     (eg. For 25% of block producer rewards going towards block pay => votepay_factor = 40000
           *          For 75% of block producer rewards going towards block pay => votepay_factor = 13333).
           */
+         
          [[eosio::action]]
-         void setinflation( int64_t annual_rate, int64_t inflation_pay_factor, int64_t votepay_factor );
-
-         [[eosio::action]]
-         void activate( time_point_sec activate_at );
+         void start( time_point_sec activate_at );
 
          [[eosio::action]]
          void stake(eosio::name username, eosio::asset quantity );
@@ -1229,7 +1230,7 @@ namespace eosiosystem {
          using setacctram_action = eosio::action_wrapper<"setacctram"_n, &system_contract::setacctram>;
          using setacctnet_action = eosio::action_wrapper<"setacctnet"_n, &system_contract::setacctnet>;
          using setacctcpu_action = eosio::action_wrapper<"setacctcpu"_n, &system_contract::setacctcpu>;
-         using activate_action = eosio::action_wrapper<"activate"_n, &system_contract::activate>;
+         using activate_action = eosio::action_wrapper<"start"_n, &system_contract::start>;
          using delegatebw_action = eosio::action_wrapper<"delegatebw"_n, &system_contract::delegatebw>;
          using deposit_action = eosio::action_wrapper<"deposit"_n, &system_contract::deposit>;
          using withdraw_action = eosio::action_wrapper<"withdraw"_n, &system_contract::withdraw>;
@@ -1270,8 +1271,7 @@ namespace eosiosystem {
          using setpriv_action = eosio::action_wrapper<"setpriv"_n, &system_contract::setpriv>;
          using setalimits_action = eosio::action_wrapper<"setalimits"_n, &system_contract::setalimits>;
          using setparams_action = eosio::action_wrapper<"setparams"_n, &system_contract::setparams>;
-         using setinflation_action = eosio::action_wrapper<"setinflation"_n, &system_contract::setinflation>;
-
+      
       private:
          // Implementation details:
 

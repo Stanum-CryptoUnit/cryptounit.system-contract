@@ -51,7 +51,7 @@ void multisig::propose( ignore<name> proposer,
       a.proposal_name       = _proposal_name;
       a.requested_approvals.reserve( _requested.size() );
       for ( auto& level : _requested ) {
-         a.requested_approvals.push_back( approval{ level, time_point{ microseconds{0} } } );
+         a.requested_approvals.push_back( approval{ level, time_point{ eosio::microseconds{0} } } );
       }
    });
 }

@@ -103,24 +103,19 @@ namespace eosio {
             return st.supply;
          }
 
-<<<<<<< HEAD
-         static asset get_balance( const name& token_contract_account, const name& owner, const symbol_code& sym_code )
-=======
-         static asset get_max_supply( name token_contract_account, symbol_code sym_code )
+         static asset get_balance( const name& token_contract_account, const name& owner, const symbol_code& sym_code ){
+            accounts accountstable( token_contract_account, owner.value );
+            const auto& ac = accountstable.get( sym_code.raw() );
+            return ac.balance;
+         };
+
+         static asset get_max_supply( const name& token_contract_account, const symbol_code& sym_code )
          {
             stats statstable( token_contract_account, sym_code.raw() );
             const auto& st = statstable.get( sym_code.raw() );
             return st.max_supply;
          }
 
-
-         static asset get_balance( name token_contract_account, name owner, symbol_code sym_code )
->>>>>>> v1.6.1-CU-staking
-         {
-            accounts accountstable( token_contract_account, owner.value );
-            const auto& ac = accountstable.get( sym_code.raw() );
-            return ac.balance;
-         }
 
          using create_action = eosio::action_wrapper<"create"_n, &token::create>;
          using issue_action = eosio::action_wrapper<"issue"_n, &token::issue>;

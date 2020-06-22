@@ -49,9 +49,6 @@ namespace eosiosystem {
 
    eosio_global_state4 system_contract::get_default_inflation_parameters() {
       eosio_global_state4 gs4;
-      gs4.continuous_rate      = get_continuous_rate(default_annual_rate);
-      gs4.inflation_pay_factor = default_inflation_pay_factor;
-      gs4.votepay_factor       = default_votepay_factor;
       return gs4;
    }
 
@@ -275,10 +272,10 @@ namespace eosiosystem {
       set_resource_limits( account, current_ram, current_net, cpu );
    }
 
-   void system_contract::activate( const eosio::checksum256& feature_digest ) {
-      require_auth( get_self() );
-      preactivate_feature( feature_digest );
-   }
+   // void system_contract::activate( const eosio::checksum256& feature_digest ) {
+   //    require_auth( get_self() );
+   //    preactivate_feature( feature_digest );
+   // }
 
    void system_contract::rmvproducer( const name& producer ) {
       require_auth( get_self() );
@@ -298,20 +295,6 @@ namespace eosiosystem {
       _gstate2.revision = revision;
    }
 
-   void system_contract::setinflation( int64_t annual_rate, int64_t inflation_pay_factor, int64_t votepay_factor ) {
-      require_auth(get_self());
-      check(annual_rate >= 0, "annual_rate can't be negative");
-      if ( inflation_pay_factor < pay_factor_precision ) {
-         check( false, "inflation_pay_factor must not be less than " + std::to_string(pay_factor_precision) );
-      }
-      if ( votepay_factor < pay_factor_precision ) {
-         check( false, "votepay_factor must not be less than " + std::to_string(pay_factor_precision) );
-      }
-      _gstate4.continuous_rate      = get_continuous_rate(annual_rate);
-      _gstate4.inflation_pay_factor = inflation_pay_factor;
-      _gstate4.votepay_factor       = votepay_factor;
-      _global4.set( _gstate4, get_self() );
-   }
 
    /**
     *  Called after a new account is created. This code enforces resource-limits rules

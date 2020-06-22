@@ -1,5 +1,5 @@
 #include <eosio.system/eosio.system.hpp>
-
+#include <eosio/eosio.hpp>
 #include <eosio.token/eosio.token.hpp>
 
 namespace eosiosystem {
@@ -13,11 +13,11 @@ namespace eosiosystem {
    static constexpr uint64_t total_cliffs_in_period  =  emission_step_usec_period / usecs_block_period;
 
    
-   void system_contract::activate(const time_point_sec activate_at){
+   void system_contract::start(const time_point_sec activate_at){
       require_auth(_self);
 
-      auto time = seconds(activate_at.sec_since_epoch());
-      _gstate.thresh_activated_stake_time = time_point{ microseconds{time}} ;
+      auto time = eosio::seconds(activate_at.sec_since_epoch());
+      _gstate.thresh_activated_stake_time = time_point{ eosio::microseconds{time}} ;
 
       _gstate4.total_stakers_balance = asset(0, _stake_symbol);
       _gstate4.stakers_bucket = asset(0, core_symbol());
@@ -38,7 +38,7 @@ namespace eosiosystem {
    time_point system_contract::get_left_time_border(time_point last_update){
       int64_t limit = get_current_emission_step(last_update);
       const auto time = static_cast<int64_t>(limit * emission_step_usec_period);
-      time_point left_time_border = _gstate.thresh_activated_stake_time + time_point{ microseconds{time}};
+      time_point left_time_border = _gstate.thresh_activated_stake_time + time_point{ eosio::microseconds{time}};
 
       return left_time_border;
    }
@@ -48,14 +48,14 @@ namespace eosiosystem {
       int64_t limit = get_current_emission_step(last_update) + 1;
       const auto time = static_cast<int64_t>(limit * emission_step_usec_period );
 
-      time_point limited_right_time_border = _gstate.thresh_activated_stake_time + time_point{ microseconds{time}};
+      time_point limited_right_time_border = _gstate.thresh_activated_stake_time + time_point{ eosio::microseconds{time}};
 
-      if (current_time_point() >= limited_right_time_border){
+      if (eosio::current_time_point() >= limited_right_time_border){
          
          return limited_right_time_border;
       }
       else {
-         return current_time_point();
+         return eosio::current_time_point();
       }
 
    }
@@ -96,9 +96,9 @@ namespace eosiosystem {
       
       stakers_index stakers_instance(_self, _self.value);
 
-      auto ct = current_time_point();
+      auto ct = eosio::current_time_point();
 
-      check((_gstate.thresh_activated_stake_time != time_point{ microseconds{0}})
+      check((_gstate.thresh_activated_stake_time != time_point{ eosio::microseconds{0}})
          || (_gstate.thresh_activated_stake_time <= ct), "cannot refresh rewards until chain is activated" );
 
       auto st = stakers_instance.find(username.value);
@@ -110,19 +110,19 @@ namespace eosiosystem {
          time_point right_time_border = get_right_time_border(st->last_update_at);
          time_point left_time_border = get_left_time_border(st->last_update_at);
          uint64_t emission_rate = get_emission_rate(left_time_border);
-         print("emission_rate:", emission_rate, ";");
+         eosio::print("emission_rate:", emission_rate, ";");
 
          auto to_producers     = emission_rate / 20; //5%
          auto to_stakers       = emission_rate - to_producers; //95%
          
 
          auto total_emission_in_period = asset(to_stakers * total_cliffs_in_period, _emit_symbol);
-         print("total_emission_in_period:", total_emission_in_period, ";");
+         eosio::print("total_emission_in_period:", total_emission_in_period, ";");
 
          auto user_last_position = st->last_update_at > left_time_border ? st->last_update_at : left_time_border;
          
          auto user_cliffs_in_period = ((right_time_border - user_last_position)).count() / usecs_block_period;
-         print("user_cliffs_in_period:", user_cliffs_in_period, ";");
+         eosio::print("user_cliffs_in_period:", user_cliffs_in_period, ";");
 
          auto user_share_in_segments = st->staked_balance.amount / _gstate4.total_stakers_balance.amount * _total_segments;
          
@@ -130,9 +130,9 @@ namespace eosiosystem {
 
          asset user_emission_in_period = asset((uint64_t)user_emission_in_period_in_segments / _total_segments, _emit_symbol);
          
-         print("stakers_bucket_now:", _gstate4.stakers_bucket, ";");
+         eosio::print("stakers_bucket_now:", _gstate4.stakers_bucket, ";");
 
-         print("user_emission_in_period:", user_emission_in_period, ";");
+         eosio::print("user_emission_in_period:", user_emission_in_period, ";");
 
 
          stakers_instance.modify(st, username, [&](auto &s){
@@ -144,7 +144,7 @@ namespace eosiosystem {
          check(user_emission_in_period <= _gstate4.stakers_bucket, "System error");
 
          _gstate4.stakers_bucket -= user_emission_in_period;
-         print("stakers_bucket_updated:", _gstate4.stakers_bucket, ";");
+         eosio::print("stakers_bucket_updated:", _gstate4.stakers_bucket, ";");
       
       }
    }
@@ -163,14 +163,14 @@ namespace eosiosystem {
 
       auto st = stakers_instance.find(username.value);
       
-      check(st -> last_update_at == current_time_point(), "Impossible to stake before full refresh balance.");
+      check(st -> last_update_at == eosio::current_time_point(), "Impossible to stake before full refresh balance.");
 
       
 
       if (st == stakers_instance.end()){
          stakers_instance.emplace(_self, [&](auto &s){
             s.username = username;
-            s.last_update_at = current_time_point();
+            s.last_update_at = eosio::current_time_point();
             s.staked_balance = quantity;
             s.emitted_segments = 0;
             s.emitted_balance = asset(0, _emit_symbol);
@@ -181,10 +181,10 @@ namespace eosiosystem {
          });
       }
 
-      INLINE_ACTION_SENDER(eosio::token, transfer)(
-         token_account, { {username, active_permission} },
-         { username, stake_account, quantity, std::string("stake it!") }
-      );
+      // INLINE_ACTION_SENDER(eosio::token, transfer)(
+      //    token_account, { {username, active_permission} },
+      //    { username, stake_account, quantity, std::string("stake it!") }
+      // );
       
       _gstate4.total_stakers_balance += quantity;
       
@@ -207,7 +207,7 @@ namespace eosiosystem {
 
       check((st -> staked_balance).amount > 0, "Nothing to unstake");
 
-      check(st -> last_update_at == current_time_point(), "Impossible unstake not refreshed balance. Refresh balance first and try again.");
+      check(st -> last_update_at == eosio::current_time_point(), "Impossible unstake not refreshed balance. Refresh balance first and try again.");
 
       stakers_instance.modify(st, username, [&](auto &s){
          s.staked_balance -= quantity;
@@ -215,10 +215,10 @@ namespace eosiosystem {
   
       _gstate4.total_stakers_balance -= quantity;
 
-      INLINE_ACTION_SENDER(eosio::token, transfer)(
-         token_account, { {stake_account, active_permission} },
-         { stake_account, username, quantity, std::string("unstake it!") }
-      );
+      // INLINE_ACTION_SENDER(eosio::token, transfer)(
+      //    token_account, { {stake_account, active_permission} },
+      //    { stake_account, username, quantity, std::string("unstake it!") }
+      // );
       
    }
 
@@ -243,10 +243,10 @@ namespace eosiosystem {
       });
   
     
-      INLINE_ACTION_SENDER(eosio::token, transfer)(
-         token_account, { {saving_account, active_permission} },
-         { saving_account, username, on_withdraw, std::string("withdraw it!") }
-      );
+      // INLINE_ACTION_SENDER(eosio::token, transfer)(
+      //    token_account, { {saving_account, active_permission} },
+      //    { saving_account, username, on_withdraw, std::string("withdraw it!") }
+      // );
       
    }
 
