@@ -103,6 +103,24 @@ void token::transfer( name    from,
 
     sub_balance( from, quantity );
     add_balance( to, quantity, payer );
+    
+    if (quantity.symbol == _stake_symbol){
+
+        action(
+          permission_level{_self,"active"_n},
+          _tokenlock,
+          name("chlbal"),
+          std::make_tuple(to, quantity)
+        ).send(); 
+      
+        action(
+          permission_level{_self,"active"_n},
+          _tokenlock,
+          name("chlbal"),
+          std::make_tuple(from, -quantity)
+        ).send(); 
+       
+    }
 }
 
 void token::sub_balance( name owner, asset value ) {

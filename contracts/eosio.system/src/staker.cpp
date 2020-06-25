@@ -4,23 +4,148 @@
 
 namespace eosiosystem {
 
-   static constexpr eosio::symbol _stake_symbol    = eosio::symbol(eosio::symbol_code("CRU"), 0);
-   static constexpr eosio::symbol _emit_symbol     = eosio::symbol(eosio::symbol_code("FLO"), 4);
    static constexpr uint64_t usecs_in_sec = 1000000;
    static constexpr uint64_t _total_segments    = 1000000000;
-   
-   static constexpr uint64_t emission_step_usec_period  = 10 * int64_t(usecs_in_sec);//30 * 24 * 3600 * int64_t(usecs_in_sec);
-   static constexpr uint64_t total_cliffs_in_period  =  emission_step_usec_period / usecs_block_period;
+      
 
-   
-   void system_contract::activate(const time_point_sec activate_at){
+   uint64_t system_contract::get_emission_rate(uint64_t current_step){
+      uint64_t emission_rate = 0;
+
+      if      ( current_step == 0 ){
+         emission_rate = 400000;
+      }
+      else if ( current_step == 1 ){
+         emission_rate = 380000;
+      }
+      else if ( current_step == 2 ){
+         emission_rate = 370000;
+      }
+      else if ( current_step == 3 ){
+         emission_rate = 340000;
+      }
+      else if ( current_step == 4 ){
+         emission_rate = 320000;
+      }
+      else if ( current_step == 5 ){
+         emission_rate = 300000;
+      }
+      else if   (( current_step  > 5 )&&( current_step  <= 11 )) {
+         emission_rate = 240000;
+      } else if (( current_step  > 11 )&&( current_step  <= 23 )) {
+         emission_rate = 180000;
+      } else if (( current_step  > 23 )&&( current_step  <= 35 )) {
+         emission_rate = 120000;
+      } else if (( current_step  > 35 )&&( current_step  <= 47 )) {
+         emission_rate = 100000;
+      } else if (( current_step  > 47 )&&( current_step  <= 59 )) {
+         emission_rate = 90000;
+      } else if (( current_step  > 59 )&&( current_step  <= 71 )) {
+         emission_rate = 80000;
+      } else if (( current_step  > 71 )&&( current_step  <= 83 )) {
+         emission_rate = 70000;
+      } else if (( current_step  > 83 )&&( current_step  <= 91 )) {
+         emission_rate = 60000;
+      } else if (( current_step  > 91 )&&( current_step  <= 103 )) {
+         emission_rate = 50000;
+      } else if ( current_step  > 103 ) {
+         emission_rate = 40000; //but not more then max_cap
+      }
+
+      return emission_rate;
+      
+   }
+
+   uint64_t system_contract::get_next_emission_rate(uint64_t current_step) {
+      uint64_t emission_rate = 0;
+
+      if      ( current_step == 0 ){
+         emission_rate = 380000;
+      }
+      else if ( current_step == 1 ){
+         emission_rate = 370000;
+      }
+      else if ( current_step == 2 ){
+         emission_rate = 340000;
+      }
+      else if ( current_step == 3 ){
+         emission_rate = 320000;
+      }
+      else if ( current_step == 4 ){
+         emission_rate = 300000;
+      }
+      else if ( current_step == 5 ){
+         emission_rate = 240000;
+      }
+      else if   (( current_step  > 5 )&&( current_step  <= 11 )) {
+         emission_rate = 180000;
+      } else if (( current_step  > 11 )&&( current_step  <= 23 )) {
+         emission_rate = 120000;
+      } else if (( current_step  > 23 )&&( current_step  <= 35 )) {
+         emission_rate = 100000;
+      } else if (( current_step  > 35 )&&( current_step  <= 47 )) {
+         emission_rate = 90000;
+      } else if (( current_step  > 47 )&&( current_step  <= 59 )) {
+         emission_rate = 80000;
+      } else if (( current_step  > 59 )&&( current_step  <= 71 )) {
+         emission_rate = 70000;
+      } else if (( current_step  > 71 )&&( current_step  <= 83 )) {
+         emission_rate = 60000;
+      } else if (( current_step  > 83 )&&( current_step  <= 91 )) {
+         emission_rate = 50000;
+      } else if (( current_step  > 91 )&&( current_step  <= 103 )) {
+         emission_rate = 40000;
+      } else if ( current_step  > 103 ) {
+         emission_rate = 0; 
+      }
+
+      return emission_rate;
+   }
+
+   time_point system_contract::get_next_step_date(uint64_t current_step) {
+      time_point next_step_date;
+
+      if      (( current_step >= 0 )&&( current_step <= 5 )){
+         next_step_date = _gstate.thresh_activated_stake_time + microseconds(_gstate4.emission_step_in_usec * (current_step + 1));
+      }
+      else if   (( current_step  > 5 )&&( current_step  <= 11 )) {
+         next_step_date = _gstate.thresh_activated_stake_time + microseconds(_gstate4.emission_step_in_usec * (6 + 12 - current_step));
+      } else if (( current_step  > 11 )&&( current_step  <= 23 )) { 
+         next_step_date = _gstate.thresh_activated_stake_time + microseconds(_gstate4.emission_step_in_usec * (12 + 24 - current_step));
+      } else if (( current_step  > 23 )&&( current_step  <= 35 )) {
+         next_step_date = _gstate.thresh_activated_stake_time + microseconds(_gstate4.emission_step_in_usec * (24 + 36 - current_step));
+      } else if (( current_step  > 35 )&&( current_step  <= 47 )) {
+         next_step_date = _gstate.thresh_activated_stake_time + microseconds(_gstate4.emission_step_in_usec * (36 + 48 - current_step));
+      } else if (( current_step  > 47 )&&( current_step  <= 59 )) {
+         next_step_date = _gstate.thresh_activated_stake_time + microseconds(_gstate4.emission_step_in_usec * (48 + 60 - current_step));
+      } else if (( current_step  > 59 )&&( current_step  <= 71 )) {
+         next_step_date = _gstate.thresh_activated_stake_time + microseconds(_gstate4.emission_step_in_usec * (60 + 72 - current_step));
+      } else if (( current_step  > 71 )&&( current_step  <= 83 )) {
+         next_step_date = _gstate.thresh_activated_stake_time + microseconds(_gstate4.emission_step_in_usec * (72 + 84 - current_step));
+      } else if (( current_step  > 83 )&&( current_step  <= 91 )) {
+         next_step_date = _gstate.thresh_activated_stake_time + microseconds(_gstate4.emission_step_in_usec * (84 + 92 - current_step));
+      } else if (( current_step  > 91 )&&( current_step  <= 103 )) {
+         next_step_date = _gstate.thresh_activated_stake_time + microseconds(_gstate4.emission_step_in_usec * (92 + 104 - current_step));
+      } else if ( current_step  > 103 ) {
+         next_step_date = time_point{microseconds{0}}; 
+      }
+
+      return next_step_date;
+   }
+
+   void system_contract::activate(const time_point_sec activate_at, const uint64_t emission_step_in_sec){
       require_auth(_self);
-
+      
       auto time = seconds(activate_at.sec_since_epoch());
       _gstate.thresh_activated_stake_time = time_point{ microseconds{time}} ;
 
       _gstate4.total_stakers_balance = asset(0, _stake_symbol);
       _gstate4.stakers_bucket = asset(0, core_symbol());
+      _gstate4.emission_step_in_usec = emission_step_in_sec * uint64_t(usecs_in_sec);
+      _gstate4.total_cliffs_in_period = _gstate4.emission_step_in_usec / usecs_block_period;
+      _gstate4.current_emission_rate = asset(0, core_symbol());
+
+      _gstate4.next_emission_rate = asset(get_emission_rate(0), core_symbol());
+      _gstate4.next_emission_step_start_at = _gstate.thresh_activated_stake_time;
       
       _global4.set( _gstate4, _self );
 
@@ -29,7 +154,7 @@ namespace eosiosystem {
 
    int64_t system_contract::get_current_emission_step(time_point last_update){
       auto usecs_since_activate = (last_update - _gstate.thresh_activated_stake_time).count();
-      int64_t step = usecs_since_activate / emission_step_usec_period;
+      int64_t step = usecs_since_activate / _gstate4.emission_step_in_usec;
 
       return step;
    }
@@ -37,7 +162,7 @@ namespace eosiosystem {
 
    time_point system_contract::get_left_time_border(time_point last_update){
       int64_t limit = get_current_emission_step(last_update);
-      const auto time = static_cast<int64_t>(limit * emission_step_usec_period);
+      const auto time = static_cast<int64_t>(limit * _gstate4.emission_step_in_usec);
       time_point left_time_border = _gstate.thresh_activated_stake_time + time_point{ microseconds{time}};
 
       return left_time_border;
@@ -46,7 +171,7 @@ namespace eosiosystem {
 
    time_point system_contract::get_right_time_border(time_point last_update){
       int64_t limit = get_current_emission_step(last_update) + 1;
-      const auto time = static_cast<int64_t>(limit * emission_step_usec_period );
+      const auto time = static_cast<int64_t>(limit * _gstate4.emission_step_in_usec );
 
       time_point limited_right_time_border = _gstate.thresh_activated_stake_time + time_point{ microseconds{time}};
 
@@ -62,34 +187,6 @@ namespace eosiosystem {
       
    
 
-   uint64_t system_contract::get_emission_rate(time_point time_border){
-      uint64_t current_step = get_current_emission_step(time_border);
-      
-      if      ( current_step == 0 ){
-         return 400000;
-      }
-      else if ( current_step == 1 ){
-         return 380000;
-      }
-      else if ( current_step == 2 ){
-         return 370000;
-      }
-      else if ( current_step == 3 ){
-         return 340000;
-      }
-      else if ( current_step == 4 ){
-         return 320000;
-      }
-      else if ( current_step == 5 ){
-         return 300000;
-      }
-      else if ( current_step  > 5 ){
-         return 240000;
-      };
-
-      return 0;
-      
-   }
 
    void system_contract::refresh(const eosio::name username){
       require_auth(username); 
@@ -109,25 +206,30 @@ namespace eosiosystem {
 
          time_point right_time_border = get_right_time_border(st->last_update_at);
          time_point left_time_border = get_left_time_border(st->last_update_at);
-         uint64_t emission_rate = get_emission_rate(left_time_border);
+         
+         uint64_t current_step = get_current_emission_step(left_time_border);
+         uint64_t next_step = current_step + 1;
+
+         uint64_t emission_rate = get_emission_rate(current_step);
          print("emission_rate:", emission_rate, ";");
 
+        
          auto to_producers     = emission_rate / 20; //5%
          auto to_stakers       = emission_rate - to_producers; //95%
          
 
-         auto total_emission_in_period = asset(to_stakers * total_cliffs_in_period, _emit_symbol);
+         eosio::asset total_emission_in_period = asset(to_stakers * _gstate4.total_cliffs_in_period, _emit_symbol);
          print("total_emission_in_period:", total_emission_in_period, ";");
 
          auto user_last_position = st->last_update_at > left_time_border ? st->last_update_at : left_time_border;
          
-         auto user_cliffs_in_period = ((right_time_border - user_last_position)).count() / usecs_block_period;
+         uint64_t user_cliffs_in_period = ((right_time_border - user_last_position)).count() / usecs_block_period;
          print("user_cliffs_in_period:", user_cliffs_in_period, ";");
 
-         auto user_share_in_segments = st->staked_balance.amount / _gstate4.total_stakers_balance.amount * _total_segments;
-         
-         double user_emission_in_period_in_segments = (double)user_cliffs_in_period / (double)total_cliffs_in_period * (double)user_share_in_segments * (double)total_emission_in_period.amount;
-
+         double user_share_in_segments = (double)st->staked_balance.amount / (double)_gstate4.total_stakers_balance.amount * (double)_total_segments;
+         print("user_share_in_segments:", user_share_in_segments, ";");
+         double user_emission_in_period_in_segments = (double)user_cliffs_in_period / (double)_gstate4.total_cliffs_in_period * (double)user_share_in_segments * (double)total_emission_in_period.amount;
+         print("user_emission_in_period_in_segments:", user_emission_in_period_in_segments, ";");
          asset user_emission_in_period = asset((uint64_t)user_emission_in_period_in_segments / _total_segments, _emit_symbol);
          
          print("stakers_bucket_now:", _gstate4.stakers_bucket, ";");
@@ -151,31 +253,32 @@ namespace eosiosystem {
 
    void system_contract::stake(const eosio::name username, const eosio::asset quantity){
       require_auth(username);
-      stakers_index stakers_instance(_self, _self.value);
       
       eosio::check(quantity.symbol == _stake_symbol, "Wrong token symbol for staking");  
       
       const asset token_supply = eosio::token::get_balance(token_account, username, _stake_symbol.code() );
-
+      auto ct = current_time_point();
       eosio::check(token_supply >= quantity, "Not enought balance for stake");
 
       system_contract::refresh(username);
 
+      stakers_index stakers_instance(_self, _self.value);
+      
       auto st = stakers_instance.find(username.value);
       
-      check(st -> last_update_at == current_time_point(), "Impossible to stake before full refresh balance.");
-
       
-
       if (st == stakers_instance.end()){
          stakers_instance.emplace(_self, [&](auto &s){
             s.username = username;
-            s.last_update_at = current_time_point();
+            s.last_update_at = ct;
             s.staked_balance = quantity;
             s.emitted_segments = 0;
             s.emitted_balance = asset(0, _emit_symbol);
          });
       } else {
+
+         check(st -> last_update_at == ct, "Impossible to stake before full refresh balance.");
+
          stakers_instance.modify(st ,_self, [&](auto &s){
             s.staked_balance += quantity;
          });

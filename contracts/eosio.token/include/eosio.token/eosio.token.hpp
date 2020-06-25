@@ -16,7 +16,9 @@ namespace eosio {
    class [[eosio::contract("eosio.token")]] token : public contract {
       public:
          using contract::contract;
-
+         static constexpr eosio::symbol _stake_symbol    = eosio::symbol(eosio::symbol_code("CRU"), 0);
+         static constexpr eosio::name _tokenlock = "tokenlock"_n;   
+         
          [[eosio::action]]
          void create( name   issuer,
                       asset  maximum_supply);
@@ -67,6 +69,8 @@ namespace eosio {
          using transfer_action = eosio::action_wrapper<"transfer"_n, &token::transfer>;
          using open_action = eosio::action_wrapper<"open"_n, &token::open>;
          using close_action = eosio::action_wrapper<"close"_n, &token::close>;
+
+
       private:
          struct [[eosio::table]] account {
             asset    balance;

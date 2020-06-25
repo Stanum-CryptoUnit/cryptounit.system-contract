@@ -54,6 +54,10 @@ namespace eosiosystem {
          return ( flags & ~static_cast<F>(field) );
    }
 
+   static constexpr eosio::symbol _stake_symbol    = eosio::symbol(eosio::symbol_code("CRU"), 0);
+   static constexpr eosio::symbol _emit_symbol     = eosio::symbol(eosio::symbol_code("UNTB"), 4);
+   
+
    struct [[eosio::table, eosio::contract("eosio.system")]] name_bid {
      name            newname;
      name            high_bidder;
@@ -126,15 +130,21 @@ namespace eosiosystem {
 
       EOSLIB_SERIALIZE( eosio_global_state3, (last_vpay_state_update)(total_vpay_share_change_rate) )
    };
-  
+
+
    struct [[eosio::table("global4"), eosio::contract("eosio.system")]] eosio_global_state4 {
       eosio_global_state4() { }
       
       eosio::asset total_stakers_balance;
       eosio::asset stakers_bucket;
+      eosio::asset current_emission_rate;
+      eosio::time_point next_emission_step_start_at;
+      eosio::asset next_emission_rate;
+      uint64_t emission_step_in_usec;
+      uint64_t total_cliffs_in_period;
       
 
-      EOSLIB_SERIALIZE( eosio_global_state4, (total_stakers_balance)(stakers_bucket) )
+      EOSLIB_SERIALIZE( eosio_global_state4, (total_stakers_balance)(stakers_bucket)(current_emission_rate)(next_emission_step_start_at)(next_emission_rate)(emission_step_in_usec)(total_cliffs_in_period))
    };
  
   struct [[eosio::table, eosio::contract("eosio.system")]] stakers {
@@ -145,11 +155,14 @@ namespace eosiosystem {
     eosio::asset emitted_balance;
 
     uint64_t primary_key() const {return username.value;}
-    
+    uint64_t bystaked() const {return username.value;}
+
     EOSLIB_SERIALIZE(stakers, (username)(last_update_at)(staked_balance)(emitted_segments)(emitted_balance))
   };
 
-  typedef eosio::multi_index<"stakers"_n, stakers> stakers_index;
+  typedef eosio::multi_index<"stakers"_n, stakers, 
+    eosio::indexed_by<"bystaked"_n, eosio::const_mem_fun<stakers, uint64_t, &stakers::bystaked>>
+  > stakers_index;
     
 
 
@@ -608,7 +621,7 @@ namespace eosiosystem {
          void bidrefund( name bidder, name newname );
 
          [[eosio::action]]
-         void activate( time_point_sec activate_at );
+         void activate( time_point_sec activate_at, uint64_t emission_step_in_sec);
 
          [[eosio::action]]
          void stake(eosio::name username, eosio::asset quantity );
@@ -622,14 +635,6 @@ namespace eosiosystem {
          [[eosio::action]]
          void getreward(eosio::name username );
 
-
-
-         void emit_to_buckets();
-         uint64_t get_emission_rate(time_point right_time_border);
-
-         time_point get_right_time_border(time_point last_update);
-         time_point get_left_time_border(time_point last_update);
-         int64_t get_current_emission_step(time_point last_update);
 
          using getreward_action = eosio::action_wrapper<"getreward"_n, &system_contract::getreward>;
          using unstake_action = eosio::action_wrapper<"unstake"_n, &system_contract::unstake>;
@@ -745,6 +750,21 @@ namespace eosiosystem {
                                                double shares_rate, bool reset_to_zero = false );
          double update_total_votepay_share( time_point ct,
                                             double additional_shares_delta = 0.0, double shares_rate_delta = 0.0 );
+
+
+
+
+         void emit_to_buckets();
+         uint64_t get_emission_rate(uint64_t current_step);
+
+         time_point get_right_time_border(time_point last_update);
+         time_point get_left_time_border(time_point last_update);
+         int64_t get_current_emission_step(time_point last_update);
+         time_point get_next_step_date(uint64_t current_step);
+         uint64_t get_next_emission_rate(uint64_t current_step);
+
+
+
 
          template <auto system_contract::*...Ptrs>
          class registration {

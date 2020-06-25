@@ -92,8 +92,20 @@ namespace eosiosystem {
          
          time_point ct_minus_block = time_point{microseconds{static_cast<int64_t>((ct - time_point{ microseconds{usecs_block_period}}).count())}};
 
-         auto emission_rate = get_emission_rate(ct_minus_block); //time3
+         uint64_t current_step = get_current_emission_step(ct_minus_block);
+         
+         auto emission_rate = get_emission_rate(current_step); 
+         
+
          print(" emission_rate", emission_rate);
+         
+         if (_gstate4.current_emission_rate.amount != emission_rate){
+            _gstate4.current_emission_rate = asset(emission_rate, core_symbol());
+            _gstate4.next_emission_step_start_at = get_next_step_date(current_step);
+            _gstate4.next_emission_rate = asset(get_next_emission_rate(current_step), core_symbol());
+         }
+
+
          uint64_t new_tokens;
 
          if (token_supply.amount + emission_rate <= max_supply.amount){
@@ -103,7 +115,8 @@ namespace eosiosystem {
          } else {
 
             new_tokens = max_supply.amount - token_supply.amount;
-
+            _gstate4.current_emission_rate = asset(0, core_symbol());
+            
          }
 
          if (new_tokens > 0){    
