@@ -80,6 +80,7 @@ namespace eosiosystem {
 
    using namespace eosio;
 
+
    void system_contract::emit_to_buckets(){
       auto ct = current_time_point();
 
@@ -87,7 +88,7 @@ namespace eosiosystem {
       const asset max_supply = eosio::token::get_max_supply(token_account, core_symbol().code() ); 
 
       const auto usecs_since_last_fill = (ct - _gstate.last_pervote_bucket_fill).count();
-      print(" usecs_since_last_fill: ", usecs_since_last_fill);
+      
       if( usecs_since_last_fill > 0 ) {
          
          time_point ct_minus_block = time_point{microseconds{static_cast<int64_t>((ct - time_point{ microseconds{usecs_block_period}}).count())}};
@@ -97,7 +98,6 @@ namespace eosiosystem {
          auto emission_rate = get_emission_rate(current_step); 
          
 
-         print(" emission_rate", emission_rate);
          
          if (_gstate4.current_emission_rate.amount != emission_rate){
             _gstate4.current_emission_rate = asset(emission_rate, core_symbol());
