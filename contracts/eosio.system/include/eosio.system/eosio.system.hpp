@@ -54,9 +54,10 @@ namespace eosiosystem {
          return ( flags & ~static_cast<F>(field) );
    }
 
-   static constexpr eosio::symbol _stake_symbol    = eosio::symbol(eosio::symbol_code("CRU"), 0);
-   static constexpr eosio::symbol _emit_symbol     = eosio::symbol(eosio::symbol_code("UNTB"), 4);
-   
+   static constexpr eosio::symbol _cru_symbol    = eosio::symbol(eosio::symbol_code("CRU"), 0);
+   static constexpr eosio::symbol _wcru_symbol    = eosio::symbol(eosio::symbol_code("WCRU"), 0);
+   static constexpr eosio::symbol _emit_symbol     = eosio::symbol(eosio::symbol_code("FLO"), 4);
+   static constexpr eosio::name _tokenlock = "tokenlock"_n; 
 
    struct [[eosio::table, eosio::contract("eosio.system")]] name_bid {
      name            newname;
@@ -134,8 +135,10 @@ namespace eosiosystem {
 
    struct [[eosio::table("global4"), eosio::contract("eosio.system")]] eosio_global_state4 {
       eosio_global_state4() { }
-      
-      eosio::asset total_stakers_balance;
+      uint64_t total_stakers_balance;
+      eosio::asset total_stakers_cru_balance;
+      eosio::asset total_stakers_wcru_balance;
+      eosio::asset total_stakers_frozen_wcru_balance;
       eosio::asset stakers_bucket;
       eosio::asset current_emission_rate;
       eosio::time_point next_emission_step_start_at;
@@ -144,20 +147,23 @@ namespace eosiosystem {
       uint64_t total_cliffs_in_period;
       
 
-      EOSLIB_SERIALIZE( eosio_global_state4, (total_stakers_balance)(stakers_bucket)(current_emission_rate)(next_emission_step_start_at)(next_emission_rate)(emission_step_in_usec)(total_cliffs_in_period))
+      EOSLIB_SERIALIZE( eosio_global_state4, (total_stakers_balance)(total_stakers_cru_balance)(total_stakers_wcru_balance)(total_stakers_frozen_wcru_balance)(stakers_bucket)(current_emission_rate)(next_emission_step_start_at)(next_emission_rate)(emission_step_in_usec)(total_cliffs_in_period))
    };
  
   struct [[eosio::table, eosio::contract("eosio.system")]] stakers {
     eosio::name username;
     eosio::time_point last_update_at;
-    eosio::asset staked_balance;
+    uint64_t staked_balance;
+    eosio::asset staked_cru_balance;
+    eosio::asset staked_wcru_balance;
+    eosio::asset staked_frozen_wcru_balance;
     uint64_t     emitted_segments;
     eosio::asset emitted_balance;
 
     uint64_t primary_key() const {return username.value;}
     uint64_t bystaked() const {return username.value;}
 
-    EOSLIB_SERIALIZE(stakers, (username)(last_update_at)(staked_balance)(emitted_segments)(emitted_balance))
+    EOSLIB_SERIALIZE(stakers, (username)(last_update_at)(staked_balance)(staked_cru_balance)(staked_wcru_balance)(staked_frozen_wcru_balance)(emitted_segments)(emitted_balance))
   };
 
   typedef eosio::multi_index<"stakers"_n, stakers, 
@@ -630,15 +636,25 @@ namespace eosiosystem {
          void unstake(eosio::name username, eosio::asset quantity );
 
          [[eosio::action]]
+         void frozenstake(eosio::name username, eosio::asset quantity );
+
+         [[eosio::action]]
+         void frozenustake(eosio::name username, eosio::asset quantity );
+
+         [[eosio::action]]
          void refresh(eosio::name username );
    
          [[eosio::action]]
-         void getreward(eosio::name username );
+         void getreward(eosio::name username, eosio::asset to_withdraw);
 
+         
 
          using getreward_action = eosio::action_wrapper<"getreward"_n, &system_contract::getreward>;
          using unstake_action = eosio::action_wrapper<"unstake"_n, &system_contract::unstake>;
          using stake_action = eosio::action_wrapper<"stake"_n, &system_contract::stake>;
+         using frozenustake_action = eosio::action_wrapper<"frozenustake"_n, &system_contract::frozenustake>;
+         using frozenstake_action = eosio::action_wrapper<"frozenstake"_n, &system_contract::frozenstake>;
+         
          using init_action = eosio::action_wrapper<"init"_n, &system_contract::init>;
          using setacctram_action = eosio::action_wrapper<"setacctram"_n, &system_contract::setacctram>;
          using setacctnet_action = eosio::action_wrapper<"setacctnet"_n, &system_contract::setacctnet>;

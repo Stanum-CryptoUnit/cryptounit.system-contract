@@ -55,7 +55,7 @@ void token::issue( name to, asset quantity, string memo )
     }
 }
 
-void token::retire( asset quantity, string memo )
+void token::retire( name username, asset quantity, string memo )
 {
     auto sym = quantity.symbol;
     check( sym.is_valid(), "invalid symbol name" );
@@ -66,17 +66,17 @@ void token::retire( asset quantity, string memo )
     check( existing != statstable.end(), "token with symbol does not exist" );
     const auto& st = *existing;
 
-    require_auth( st.issuer );
+    require_auth( username );
     check( quantity.is_valid(), "invalid quantity" );
     check( quantity.amount > 0, "must retire positive quantity" );
 
     check( quantity.symbol == st.supply.symbol, "symbol precision mismatch" );
 
-    statstable.modify( st, same_payer, [&]( auto& s ) {
+    statstable.modify( st, username, [&]( auto& s ) {
        s.supply -= quantity;
     });
 
-    sub_balance( st.issuer, quantity );
+    sub_balance( username, quantity );
 }
 
 void token::transfer( name    from,
@@ -104,7 +104,7 @@ void token::transfer( name    from,
     sub_balance( from, quantity );
     add_balance( to, quantity, payer );
     
-    if (quantity.symbol == _stake_symbol){
+    if ((quantity.symbol == _cru_symbol) || (quantity.symbol == _wcru_symbol)){
 
         action(
           permission_level{_self,"active"_n},

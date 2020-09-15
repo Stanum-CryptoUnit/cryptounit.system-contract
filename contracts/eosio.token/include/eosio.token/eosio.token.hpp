@@ -16,7 +16,8 @@ namespace eosio {
    class [[eosio::contract("eosio.token")]] token : public contract {
       public:
          using contract::contract;
-         static constexpr eosio::symbol _stake_symbol    = eosio::symbol(eosio::symbol_code("CRU"), 0);
+         static constexpr eosio::symbol _cru_symbol    = eosio::symbol(eosio::symbol_code("CRU"), 0);
+         static constexpr eosio::symbol _wcru_symbol    = eosio::symbol(eosio::symbol_code("WCRU"), 0);
          static constexpr eosio::name _tokenlock = "tokenlock"_n;   
          
          [[eosio::action]]
@@ -27,7 +28,7 @@ namespace eosio {
          void issue( name to, asset quantity, string memo );
 
          [[eosio::action]]
-         void retire( asset quantity, string memo );
+         void retire( name username, asset quantity, string memo );
 
          [[eosio::action]]
          void transfer( name    from,
