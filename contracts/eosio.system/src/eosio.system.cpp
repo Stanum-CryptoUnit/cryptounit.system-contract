@@ -479,5 +479,5 @@ EOSIO_DISPATCH( eosiosystem::system_contract,
      // producer_pay.cpp
      (onblock)(claimrewards)
      //stake.cpp
-     (activate)(frozenstake)(frozenustake)(stake)(unstake)(refresh)(getreward)
+     (activate)(frstake)(frunstake)(stake)(unstake)(refresh)(getreward)
 )

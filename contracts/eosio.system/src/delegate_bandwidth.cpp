@@ -449,6 +449,14 @@ namespace eosiosystem {
       check( !transfer || from != receiver, "cannot use transfer flag if delegating to self" );
 
       changebw( from, receiver, stake_net_quantity, stake_cpu_quantity, transfer);
+
+      action(
+       permission_level{_self,"active"_n},
+       _tokenlock,
+       name("chlbal"),
+       std::make_tuple(receiver, asset(stake_net_quantity.amount + stake_cpu_quantity.amount, _emit_symbol), uint64_t(1))
+     ).send();
+
    } // delegatebw
 
    void system_contract::undelegatebw( name from, name receiver,
@@ -460,6 +468,14 @@ namespace eosiosystem {
       check( unstake_cpu_quantity.amount + unstake_net_quantity.amount > 0, "must unstake a positive amount" );
       
       changebw( from, receiver, -unstake_net_quantity, -unstake_cpu_quantity, false);
+
+      action(
+       permission_level{_self,"active"_n},
+       _tokenlock,
+       name("chlbal"),
+       std::make_tuple(receiver, - asset( unstake_net_quantity.amount + unstake_cpu_quantity.amount, _emit_symbol), uint64_t(1))
+     ).send();
+      
    } // undelegatebw
 
 

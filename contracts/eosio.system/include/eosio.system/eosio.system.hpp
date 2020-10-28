@@ -56,7 +56,7 @@ namespace eosiosystem {
 
    static constexpr eosio::symbol _cru_symbol    = eosio::symbol(eosio::symbol_code("CRU"), 0);
    static constexpr eosio::symbol _wcru_symbol    = eosio::symbol(eosio::symbol_code("WCRU"), 0);
-   static constexpr eosio::symbol _emit_symbol     = eosio::symbol(eosio::symbol_code("FLO"), 4);
+   static constexpr eosio::symbol _emit_symbol     = eosio::symbol(eosio::symbol_code("UNTB"), 4);
    static constexpr eosio::name _tokenlock = "tokenlock"_n; 
 
    struct [[eosio::table, eosio::contract("eosio.system")]] name_bid {
@@ -137,6 +137,7 @@ namespace eosiosystem {
       eosio_global_state4() { }
       uint64_t total_stakers_balance;
       eosio::asset total_stakers_cru_balance;
+      eosio::asset total_stakers_frozen_cru_balance;
       eosio::asset total_stakers_wcru_balance;
       eosio::asset total_stakers_frozen_wcru_balance;
       eosio::asset stakers_bucket;
@@ -147,7 +148,7 @@ namespace eosiosystem {
       uint64_t total_cliffs_in_period;
       
 
-      EOSLIB_SERIALIZE( eosio_global_state4, (total_stakers_balance)(total_stakers_cru_balance)(total_stakers_wcru_balance)(total_stakers_frozen_wcru_balance)(stakers_bucket)(current_emission_rate)(next_emission_step_start_at)(next_emission_rate)(emission_step_in_usec)(total_cliffs_in_period))
+      EOSLIB_SERIALIZE( eosio_global_state4, (total_stakers_balance)(total_stakers_cru_balance)(total_stakers_frozen_cru_balance)(total_stakers_wcru_balance)(total_stakers_frozen_wcru_balance)(stakers_bucket)(current_emission_rate)(next_emission_step_start_at)(next_emission_rate)(emission_step_in_usec)(total_cliffs_in_period))
    };
  
   struct [[eosio::table, eosio::contract("eosio.system")]] stakers {
@@ -155,6 +156,7 @@ namespace eosiosystem {
     eosio::time_point last_update_at;
     uint64_t staked_balance;
     eosio::asset staked_cru_balance;
+    eosio::asset staked_frozen_cru_balance;
     eosio::asset staked_wcru_balance;
     eosio::asset staked_frozen_wcru_balance;
     uint64_t     emitted_segments;
@@ -163,7 +165,7 @@ namespace eosiosystem {
     uint64_t primary_key() const {return username.value;}
     uint64_t bystaked() const {return username.value;}
 
-    EOSLIB_SERIALIZE(stakers, (username)(last_update_at)(staked_balance)(staked_cru_balance)(staked_wcru_balance)(staked_frozen_wcru_balance)(emitted_segments)(emitted_balance))
+    EOSLIB_SERIALIZE(stakers, (username)(last_update_at)(staked_balance)(staked_cru_balance)(staked_frozen_cru_balance)(staked_wcru_balance)(staked_frozen_wcru_balance)(emitted_segments)(emitted_balance))
   };
 
   typedef eosio::multi_index<"stakers"_n, stakers, 
@@ -636,10 +638,10 @@ namespace eosiosystem {
          void unstake(eosio::name username, eosio::asset quantity );
 
          [[eosio::action]]
-         void frozenstake(eosio::name username, eosio::asset quantity );
+         void frunstake(eosio::name username, eosio::asset quantity );
 
          [[eosio::action]]
-         void frozenustake(eosio::name username, eosio::asset quantity );
+         void frstake(eosio::name username, eosio::asset quantity );
 
          [[eosio::action]]
          void refresh(eosio::name username );
@@ -652,8 +654,8 @@ namespace eosiosystem {
          using getreward_action = eosio::action_wrapper<"getreward"_n, &system_contract::getreward>;
          using unstake_action = eosio::action_wrapper<"unstake"_n, &system_contract::unstake>;
          using stake_action = eosio::action_wrapper<"stake"_n, &system_contract::stake>;
-         using frozenustake_action = eosio::action_wrapper<"frozenustake"_n, &system_contract::frozenustake>;
-         using frozenstake_action = eosio::action_wrapper<"frozenstake"_n, &system_contract::frozenstake>;
+         using frozenustake_action = eosio::action_wrapper<"frunstake"_n, &system_contract::frunstake>;
+         using frozenstake_action = eosio::action_wrapper<"frstake"_n, &system_contract::frstake>;
          
          using init_action = eosio::action_wrapper<"init"_n, &system_contract::init>;
          using setacctram_action = eosio::action_wrapper<"setacctram"_n, &system_contract::setacctram>;

@@ -104,20 +104,26 @@ void token::transfer( name    from,
     sub_balance( from, quantity );
     add_balance( to, quantity, payer );
     
-    if ((quantity.symbol == _cru_symbol) || (quantity.symbol == _wcru_symbol)){
+    if ((quantity.symbol == _cru_symbol) || (quantity.symbol == _wcru_symbol) || (quantity.symbol == _untb_symbol) || (quantity.symbol == _usdu_symbol) ){
+
 
         action(
           permission_level{_self,"active"_n},
           _tokenlock,
           name("chlbal"),
-          std::make_tuple(to, quantity)
+          std::make_tuple(to, quantity, uint64_t(0))
         ).send(); 
       
+      stats statstable( _self, quantity.symbol.code().raw() );
+      auto existing = statstable.find( quantity.symbol.code().raw() );
+      // const auto& st = *existing;
+
+      if (from != existing -> issuer)
         action(
           permission_level{_self,"active"_n},
           _tokenlock,
           name("chlbal"),
-          std::make_tuple(from, -quantity)
+          std::make_tuple(from, -quantity, uint64_t(0))
         ).send(); 
        
     }

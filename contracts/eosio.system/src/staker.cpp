@@ -140,6 +140,7 @@ namespace eosiosystem {
 
       _gstate4.total_stakers_balance = 0;
       _gstate4.total_stakers_cru_balance = asset(0, _cru_symbol);
+      _gstate4.total_stakers_frozen_cru_balance = asset(0, _cru_symbol);
       _gstate4.total_stakers_wcru_balance = asset(0, _wcru_symbol);
       _gstate4.total_stakers_frozen_wcru_balance = asset(0, _wcru_symbol);
 
@@ -147,7 +148,7 @@ namespace eosiosystem {
       _gstate4.emission_step_in_usec = emission_step_in_sec * uint64_t(usecs_in_sec);
       _gstate4.total_cliffs_in_period = _gstate4.emission_step_in_usec / usecs_block_period;
       _gstate4.current_emission_rate = asset(0, core_symbol());
-
+      
       _gstate4.next_emission_rate = asset(get_emission_rate(0), core_symbol());
       _gstate4.next_emission_step_start_at = _gstate.thresh_activated_stake_time;
       
@@ -191,7 +192,7 @@ namespace eosiosystem {
     
 
    void system_contract::refresh(const eosio::name username){
-      require_auth(username); 
+      // require_auth(username); 
       
       stakers_index stakers_instance(_self, _self.value);
 
@@ -239,7 +240,7 @@ namespace eosiosystem {
          print("user_emission_in_period:", user_emission_in_period, ";");
 
 
-         stakers_instance.modify(st, username, [&](auto &s){
+         stakers_instance.modify(st, _self, [&](auto &s){
             s.last_update_at = right_time_border;
             s.emitted_segments += user_emission_in_period_in_segments;
             s.emitted_balance += user_emission_in_period;
@@ -254,32 +255,38 @@ namespace eosiosystem {
    }
 
 
-   void system_contract::frozenustake(const eosio::name username, const eosio::asset quantity) {
+   void system_contract::frunstake(const eosio::name username, const eosio::asset quantity) {
       require_auth(_tokenlock);
 
       system_contract::refresh(username);
-
+      system_contract::refresh(username);
+            
       stakers_index stakers_instance(_self, _self.value);
 
       auto st = stakers_instance.find(username.value);
 
-      check(st != stakers_instance.end(), "Username is not found");
+      if (st != stakers_instance.end()){
+         check(st -> staked_frozen_wcru_balance.amount >= quantity.amount, "Not enought frozen tokens for unstake");      
+         check(st -> staked_balance >= quantity.amount, "Not enought tokens for unstake");     
 
-      check(st -> staked_frozen_wcru_balance.amount >= quantity.amount, "Not enought frozen tokens for unstake");      
-      check(st -> staked_balance >= quantity.amount, "Not enought tokens for unstake");     
+         check(st -> last_update_at == current_time_point(), "Impossible unstake not refreshed balance. Refresh balance first and try again.");
 
-      check(st -> last_update_at == current_time_point(), "Impossible unstake not refreshed balance. Refresh balance first and try again.");
 
-      stakers_instance.modify(st, username, [&](auto &s){
-         s.staked_balance -= quantity.amount;
-         s.staked_frozen_wcru_balance -= quantity;        
-      });
-  
-      _gstate4.total_stakers_balance -= quantity.amount;
+         stakers_instance.modify(st, username, [&](auto &s){
+            s.staked_balance -= quantity.amount;
+            s.staked_wcru_balance -= quantity;
+            s.staked_frozen_wcru_balance -= quantity;        
+         });
 
- }
+     
+         _gstate4.total_stakers_balance -= quantity.amount;
+         _gstate4.total_stakers_frozen_wcru_balance -= quantity;
+         _gstate4.total_stakers_wcru_balance -= quantity;   
+      }
+      
+   }
 
-   void system_contract::frozenstake(const eosio::name username, const eosio::asset quantity) {
+   void system_contract::frstake(const eosio::name username, const eosio::asset quantity) {
       require_auth(_tokenlock);
       
       eosio::check(quantity.symbol == _wcru_symbol, "Wrong token symbol for staking");
@@ -301,7 +308,8 @@ namespace eosiosystem {
             s.staked_balance = quantity.amount;
             s.staked_frozen_wcru_balance = quantity;
             s.staked_cru_balance = asset(0, _cru_symbol);
-            s.staked_wcru_balance = asset(0, _wcru_symbol);
+            s.staked_frozen_cru_balance = asset(0, _cru_symbol);
+            s.staked_wcru_balance = quantity;
             s.emitted_segments = 0;
             s.emitted_balance = asset(0, _emit_symbol);
          });
@@ -311,18 +319,19 @@ namespace eosiosystem {
 
          stakers_instance.modify(st ,_self, [&](auto &s){
             s.staked_balance += quantity.amount;
+            s.staked_wcru_balance += quantity;
             s.staked_frozen_wcru_balance += quantity;
          });
       }
 
       _gstate4.total_stakers_balance += quantity.amount;
       _gstate4.total_stakers_frozen_wcru_balance += quantity;
-
+      _gstate4.total_stakers_wcru_balance += quantity;
 
 
  }
 
-   void system_contract::stake(const eosio::name username, const eosio::asset quantity){
+   void system_contract::stake(const eosio::name username, const eosio::asset quantity) {
       require_auth(username);
       
       asset token_supply;
@@ -425,7 +434,8 @@ namespace eosiosystem {
       });
   
       _gstate4.total_stakers_balance -= quantity.amount;
-
+      quantity.symbol == _cru_symbol ? _gstate4.total_stakers_cru_balance -= quantity : _gstate4.total_stakers_wcru_balance -= quantity;
+      
       INLINE_ACTION_SENDER(eosio::token, transfer)(
          token_account, { {stake_account, active_permission} },
          { stake_account, username, quantity, std::string("unstake it!") }

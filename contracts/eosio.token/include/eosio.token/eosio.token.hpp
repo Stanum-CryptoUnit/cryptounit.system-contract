@@ -18,6 +18,9 @@ namespace eosio {
          using contract::contract;
          static constexpr eosio::symbol _cru_symbol    = eosio::symbol(eosio::symbol_code("CRU"), 0);
          static constexpr eosio::symbol _wcru_symbol    = eosio::symbol(eosio::symbol_code("WCRU"), 0);
+         static constexpr eosio::symbol _untb_symbol    = eosio::symbol(eosio::symbol_code("UNTB"), 4);
+         static constexpr eosio::symbol _usdu_symbol    = eosio::symbol(eosio::symbol_code("USDU"), 2);
+
          static constexpr eosio::name _tokenlock = "tokenlock"_n;   
          
          [[eosio::action]]
