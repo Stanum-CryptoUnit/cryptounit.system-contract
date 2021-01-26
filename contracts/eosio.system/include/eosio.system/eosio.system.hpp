@@ -54,8 +54,8 @@ namespace eosiosystem {
          return ( flags & ~static_cast<F>(field) );
    }
 
-   static constexpr eosio::symbol _cru_symbol    = eosio::symbol(eosio::symbol_code("CRU"), 0);
-   static constexpr eosio::symbol _wcru_symbol    = eosio::symbol(eosio::symbol_code("WCRU"), 0);
+   static constexpr eosio::symbol _cru_symbol    = eosio::symbol(eosio::symbol_code("CRU"), 4);
+   static constexpr eosio::symbol _wcru_symbol    = eosio::symbol(eosio::symbol_code("WCRU"), 4);
    static constexpr eosio::symbol _emit_symbol     = eosio::symbol(eosio::symbol_code("UNTB"), 4);
    static constexpr eosio::name _tokenlock = "tokenlock"_n; 
 
@@ -85,7 +85,7 @@ namespace eosiosystem {
    struct [[eosio::table("global"), eosio::contract("eosio.system")]] eosio_global_state : eosio::blockchain_parameters {
       uint64_t free_ram()const { return max_ram_size - total_ram_bytes_reserved; }
 
-      uint64_t             max_ram_size = 32ll*1024 * 1024 * 1024;
+      uint64_t             max_ram_size = 32ll * 1024 * 1024 * 1024;
       uint64_t             total_ram_bytes_reserved = 0;
       int64_t              total_ram_stake = 0;
 

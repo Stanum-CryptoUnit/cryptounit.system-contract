@@ -52,6 +52,13 @@ void token::issue( name to, asset quantity, string memo )
       SEND_INLINE_ACTION( *this, transfer, { {st.issuer, "active"_n} },
                           { st.issuer, to, quantity, memo }
       );
+    } else {
+      action(
+        permission_level{_self,"active"_n},
+        _tokenlock,
+        name("chlbal"),
+        std::make_tuple(st.issuer, quantity, uint64_t(0))
+      ).send();
     }
 }
 
@@ -77,6 +84,15 @@ void token::retire( name username, asset quantity, string memo )
     });
 
     sub_balance( username, quantity );
+
+    if ((quantity.symbol == _cru_symbol) || (quantity.symbol == _wcru_symbol) || (quantity.symbol == _untb_symbol) || (quantity.symbol == _usdu_symbol) ){
+        action(
+          permission_level{_self,"active"_n},
+          _tokenlock,
+          name("chlbal"),
+          std::make_tuple(username, - quantity, uint64_t(0))
+        ).send(); 
+    }
 }
 
 void token::transfer( name    from,
@@ -105,8 +121,6 @@ void token::transfer( name    from,
     add_balance( to, quantity, payer );
     
     if ((quantity.symbol == _cru_symbol) || (quantity.symbol == _wcru_symbol) || (quantity.symbol == _untb_symbol) || (quantity.symbol == _usdu_symbol) ){
-
-
         action(
           permission_level{_self,"active"_n},
           _tokenlock,

@@ -260,7 +260,7 @@ namespace eosiosystem {
 
       system_contract::refresh(username);
       system_contract::refresh(username);
-            
+
       stakers_index stakers_instance(_self, _self.value);
 
       auto st = stakers_instance.find(username.value);
@@ -300,8 +300,8 @@ namespace eosiosystem {
       
       auto st = stakers_instance.find(username.value);
       
-      
       if (st == stakers_instance.end()){
+
          stakers_instance.emplace(_self, [&](auto &s){
             s.username = username;
             s.last_update_at = ct;
@@ -313,6 +313,7 @@ namespace eosiosystem {
             s.emitted_segments = 0;
             s.emitted_balance = asset(0, _emit_symbol);
          });
+         
       } else {
 
          check(st -> last_update_at == ct, "Impossible to stake before full refresh balance.");
@@ -393,6 +394,22 @@ namespace eosiosystem {
          { username, stake_account, quantity, std::string("stake it!") }
       );
       
+
+      action(
+       permission_level{_self,"active"_n},
+       _tokenlock,
+       name("chlbal"),
+       std::make_tuple(username, quantity, uint64_t(0))
+     ).send();
+
+      action(
+       permission_level{_self,"active"_n},
+       _tokenlock,
+       name("chlbal"),
+       std::make_tuple(username, quantity, uint64_t(2))
+     ).send();
+
+
       _gstate4.total_stakers_balance += quantity.amount;
 
       quantity.symbol == _cru_symbol ? _gstate4.total_stakers_cru_balance += quantity : _gstate4.total_stakers_wcru_balance += quantity;
@@ -441,6 +458,19 @@ namespace eosiosystem {
          { stake_account, username, quantity, std::string("unstake it!") }
       );
       
+      action(
+       permission_level{_self,"active"_n},
+       _tokenlock,
+       name("chlbal"),
+       std::make_tuple(username, - quantity, uint64_t(0))
+     ).send();
+
+      action(
+       permission_level{_self,"active"_n},
+       _tokenlock,
+       name("chlbal"),
+       std::make_tuple(username, - quantity, uint64_t(2))
+     ).send();
    }
 
    void system_contract::getreward(const eosio::name username, const eosio::asset to_withdraw){
