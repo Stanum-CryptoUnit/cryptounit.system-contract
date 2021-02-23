@@ -596,7 +596,7 @@ namespace eosiosystem {
          void unregprod( const name producer );
 
          [[eosio::action]]
-         void setram( uint64_t max_ram_size );
+         void setram( uint64_t max_ram_size, double devider );
          [[eosio::action]]
          void setramrate( uint16_t bytes_per_block );
 

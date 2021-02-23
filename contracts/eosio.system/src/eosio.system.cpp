@@ -66,10 +66,10 @@ namespace eosiosystem {
       _global4.set( _gstate4, _self );
    }
 
-   void system_contract::setram( uint64_t max_ram_size ) {
+   void system_contract::setram( uint64_t max_ram_size, double devider ) {
       require_auth( _self );
 
-      check( _gstate.max_ram_size < max_ram_size, "ram may only be increased" ); /// decreasing ram might result market maker issues
+      check( _gstate.max_ram_size <= max_ram_size, "ram may only be increased" ); /// decreasing ram might result market maker issues
       check( max_ram_size < 1024ll*1024*1024*1024*1024, "ram size is unrealistic" );
       check( max_ram_size > _gstate.total_ram_bytes_reserved, "attempt to set max below reserved" );
 
@@ -81,6 +81,11 @@ namespace eosiosystem {
        */
       _rammarket.modify( itr, same_payer, [&]( auto& m ) {
          m.base.balance.amount += delta;
+         
+         if (devider != 0){
+            m.base.balance.amount = m.base.balance.amount / devider;
+         };
+
       });
 
       _gstate.max_ram_size = max_ram_size;
