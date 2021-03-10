@@ -163,7 +163,7 @@ namespace eosiosystem {
     eosio::asset emitted_balance;
 
     uint64_t primary_key() const {return username.value;}
-    uint64_t bystaked() const {return username.value;}
+    uint64_t bystaked() const {return staked_balance;}
 
     EOSLIB_SERIALIZE(stakers, (username)(last_update_at)(staked_balance)(staked_cru_balance)(staked_frozen_cru_balance)(staked_wcru_balance)(staked_frozen_wcru_balance)(emitted_segments)(emitted_balance))
   };
@@ -171,6 +171,18 @@ namespace eosiosystem {
   typedef eosio::multi_index<"stakers"_n, stakers, 
     eosio::indexed_by<"bystaked"_n, eosio::const_mem_fun<stakers, uint64_t, &stakers::bystaked>>
   > stakers_index;
+    
+
+  struct [[eosio::table, eosio::contract("eosio.system")]] stakers2 {
+    eosio::name username;
+    eosio::time_point current_update_at;
+    
+    uint64_t primary_key() const {return username.value;}
+    
+    EOSLIB_SERIALIZE(stakers2, (username)(current_update_at))
+  };
+
+  typedef eosio::multi_index<"stakers2"_n, stakers2> stakers2_index;
     
 
 

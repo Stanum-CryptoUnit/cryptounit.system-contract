@@ -195,6 +195,9 @@ namespace eosiosystem {
       // require_auth(username); 
       
       stakers_index stakers_instance(_self, _self.value);
+      
+      stakers2_index stakers2_instance(_self, _self.value);
+
 
       auto ct = current_time_point();
 
@@ -202,55 +205,75 @@ namespace eosiosystem {
          || (_gstate.thresh_activated_stake_time <= ct), "cannot refresh rewards until chain is activated" );
 
       auto st = stakers_instance.find(username.value);
+      time_point current_update_at = time_point{ microseconds{0}};
+
+      auto st2 = stakers2_instance.find(username.value);
+      
+      if (st2 != stakers2_instance.end()) {
+         current_update_at = st2 -> current_update_at;
+      };
 
       if (st != stakers_instance.end()){
-         
-         // check(st->staked_balance.amount > 0, "Nothing is not staked for refresh");
+         if (current_update_at < ct){
 
-         time_point right_time_border = get_right_time_border(st->last_update_at);
-         time_point left_time_border = get_left_time_border(st->last_update_at);
-         
-         uint64_t current_step = get_current_emission_step(left_time_border);
-         uint64_t next_step = current_step + 1;
+            if (st2 == stakers2_instance.end()){
+               stakers2_instance.emplace(_self, [&](auto &s2){
+                  s2.username = username;
+                  s2.current_update_at = ct;
+               });
+            } else {
+               stakers2_instance.modify(st2, _self, [&](auto &s2){
+                  s2.current_update_at = ct;
+               });
+            };
 
-         uint64_t emission_rate = get_emission_rate(current_step);
-         print("emission_rate:", emission_rate, ";");
+            // check(st->staked_balance.amount > 0, "Nothing is not staked for refresh");
 
-        
-         auto to_producers     = emission_rate / 20; //5%
-         auto to_stakers       = emission_rate - to_producers; //95%
-         
+            time_point right_time_border = get_right_time_border(st->last_update_at);
+            time_point left_time_border = get_left_time_border(st->last_update_at);
+            
+            uint64_t current_step = get_current_emission_step(left_time_border);
+            uint64_t next_step = current_step + 1;
 
-         eosio::asset total_emission_in_period = asset(to_stakers * _gstate4.total_cliffs_in_period, _emit_symbol);
-         print("total_emission_in_period:", total_emission_in_period, ";");
+            uint64_t emission_rate = get_emission_rate(current_step);
+            print("emission_rate:", emission_rate, ";");
 
-         auto user_last_position = st->last_update_at > left_time_border ? st->last_update_at : left_time_border;
-         
-         uint64_t user_cliffs_in_period = ((right_time_border - user_last_position)).count() / usecs_block_period;
-         print("user_cliffs_in_period:", user_cliffs_in_period, ";");
+           
+            auto to_producers     = emission_rate / 20; //5%
+            auto to_stakers       = emission_rate - to_producers; //95%
+            
 
-         double user_share_in_segments = (double)st->staked_balance / (double)_gstate4.total_stakers_balance * (double)_total_segments;
-         print("user_share_in_segments:", user_share_in_segments, ";");
-         double user_emission_in_period_in_segments = (double)user_cliffs_in_period / (double)_gstate4.total_cliffs_in_period * (double)user_share_in_segments * (double)total_emission_in_period.amount;
-         print("user_emission_in_period_in_segments:", user_emission_in_period_in_segments, ";");
-         asset user_emission_in_period = asset((uint64_t)user_emission_in_period_in_segments / _total_segments, _emit_symbol);
-         
-         print("stakers_bucket_now:", _gstate4.stakers_bucket, ";");
+            eosio::asset total_emission_in_period = asset(to_stakers * _gstate4.total_cliffs_in_period, _emit_symbol);
+            print("total_emission_in_period:", total_emission_in_period, ";");
 
-         print("user_emission_in_period:", user_emission_in_period, ";");
+            auto user_last_position = st->last_update_at > left_time_border ? st->last_update_at : left_time_border;
+            
+            uint64_t user_cliffs_in_period = ((right_time_border - user_last_position)).count() / usecs_block_period;
+            print("user_cliffs_in_period:", user_cliffs_in_period, ";");
+
+            double user_share_in_segments = (double)st->staked_balance / (double)_gstate4.total_stakers_balance * (double)_total_segments;
+            print("user_share_in_segments:", user_share_in_segments, ";");
+            double user_emission_in_period_in_segments = (double)user_cliffs_in_period / (double)_gstate4.total_cliffs_in_period * (double)user_share_in_segments * (double)total_emission_in_period.amount;
+            print("user_emission_in_period_in_segments:", user_emission_in_period_in_segments, ";");
+            asset user_emission_in_period = asset((uint64_t)user_emission_in_period_in_segments / _total_segments, _emit_symbol);
+            
+            print("stakers_bucket_now:", _gstate4.stakers_bucket, ";");
+
+            print("user_emission_in_period:", user_emission_in_period, ";");
 
 
-         stakers_instance.modify(st, _self, [&](auto &s){
-            s.last_update_at = right_time_border;
-            s.emitted_segments += user_emission_in_period_in_segments;
-            s.emitted_balance += user_emission_in_period;
-         });     
-         
-         check(user_emission_in_period <= _gstate4.stakers_bucket, "System error");
+            stakers_instance.modify(st, _self, [&](auto &s){
+               s.last_update_at = right_time_border;
+               s.emitted_segments += user_emission_in_period_in_segments;
+               s.emitted_balance += user_emission_in_period;
+            });     
+            
 
-         _gstate4.stakers_bucket -= user_emission_in_period;
-         print("stakers_bucket_updated:", _gstate4.stakers_bucket, ";");
-      
+            check(user_emission_in_period <= _gstate4.stakers_bucket, "System error");
+
+            _gstate4.stakers_bucket -= user_emission_in_period;
+            print("stakers_bucket_updated:", _gstate4.stakers_bucket, ";");
+         }
       }
    }
 
