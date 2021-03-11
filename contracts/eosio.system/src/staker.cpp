@@ -447,9 +447,7 @@ namespace eosiosystem {
       stakers3_index stakers3_instance(_self, _self.value);
       auto staker = stakers3_instance.find(username.value);
       
-      //3 * useconds_per_day
-
-      if (staker != stakers3_instance.end() && staker->last_update_at + microseconds(20 * usecs_block_period) < current_time_point()) {
+      if (staker != stakers3_instance.end() && staker->last_update_at + microseconds(3 * useconds_per_day) < current_time_point()) {
          if (staker -> cru_on_widthdraw.amount > 0 || staker -> wcru_on_widthdraw.amount > 0){
             
             if (staker -> cru_on_widthdraw.amount > 0) {
