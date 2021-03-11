@@ -416,7 +416,8 @@ namespace eosiosystem {
          token_account, { {username, active_permission} },
          { username, stake_account, quantity, std::string("stake it!") }
       );
-      
+   
+
 
       action(
        permission_level{_self,"active"_n},
@@ -440,7 +441,56 @@ namespace eosiosystem {
 
    }
 
+   void system_contract::frwithdraw(const eosio::name username){
+      require_auth(username);
 
+      stakers3_index stakers3_instance(_self, _self.value);
+      auto staker = stakers3_instance.find(username.value);
+      
+      //3 * useconds_per_day
+
+      if (staker != stakers3_instance.end() && staker->last_update_at + microseconds(20 * usecs_block_period) < current_time_point()) {
+         if (staker -> cru_on_widthdraw.amount > 0 || staker -> wcru_on_widthdraw.amount > 0){
+            
+            if (staker -> cru_on_widthdraw.amount > 0) {
+               INLINE_ACTION_SENDER(eosio::token, transfer)(
+                  token_account, { {stake_account, active_permission} },
+                  { stake_account, username, staker -> cru_on_widthdraw, std::string("unstake it!") }
+               );
+
+              action(
+                permission_level{_self,"active"_n},
+                _tokenlock,
+                name("chlbal"),
+                std::make_tuple(username, - staker -> cru_on_widthdraw, uint64_t(0))
+              ).send();
+            };
+
+            if (staker -> wcru_on_widthdraw.amount > 0) {
+               INLINE_ACTION_SENDER(eosio::token, transfer)(
+                  token_account, { {stake_account, active_permission} },
+                  { stake_account, username, staker -> wcru_on_widthdraw, std::string("unstake it!") }
+               );
+
+              action(
+                permission_level{_self,"active"_n},
+                _tokenlock,
+                name("chlbal"),
+                std::make_tuple(username, - staker -> wcru_on_widthdraw, uint64_t(0))
+              ).send();
+
+            };
+
+            stakers3_instance.modify(staker, username, [&](auto &s){
+               s.last_update_at = current_time_point();
+               s.cru_on_widthdraw -= staker -> cru_on_widthdraw;
+               s.wcru_on_widthdraw -= staker -> wcru_on_widthdraw;
+            });
+         }
+      }
+
+   }
+   
    void system_contract::unstake(const eosio::name username, const eosio::asset quantity){
       require_auth(username);
 
@@ -476,24 +526,45 @@ namespace eosiosystem {
       _gstate4.total_stakers_balance -= quantity.amount;
       quantity.symbol == _cru_symbol ? _gstate4.total_stakers_cru_balance -= quantity : _gstate4.total_stakers_wcru_balance -= quantity;
       
-      INLINE_ACTION_SENDER(eosio::token, transfer)(
-         token_account, { {stake_account, active_permission} },
-         { stake_account, username, quantity, std::string("unstake it!") }
-      );
-      
-      action(
-       permission_level{_self,"active"_n},
-       _tokenlock,
-       name("chlbal"),
-       std::make_tuple(username, - quantity, uint64_t(0))
-     ).send();
 
-      action(
+      
+     //FREEZE tokens on withdraw
+      stakers3_index stakers3_instance(_self, _self.value);
+      auto staker = stakers3_instance.find(username.value);
+      if (staker == stakers3_instance.end()){
+         stakers3_instance.emplace(username, [&](auto &s){
+            s.username = username;
+            s.last_update_at = current_time_point();
+            if (quantity.symbol == _cru_symbol){
+               s.cru_on_widthdraw = quantity;
+               s.wcru_on_widthdraw = asset(0, _wcru_symbol);
+            } else if (quantity.symbol == _wcru_symbol){
+               s.cru_on_widthdraw = asset(0, _cru_symbol);
+               s.wcru_on_widthdraw = quantity;
+            } else {
+               eosio::check(false, "Only CRU or WCRU symbols can be unstaked");
+            };
+         });
+      } else {
+         stakers3_instance.modify(staker, username, [&](auto &s){
+            s.last_update_at = current_time_point();
+            if (quantity.symbol == _cru_symbol){
+               s.cru_on_widthdraw += quantity;
+            } else if (quantity.symbol == _wcru_symbol){
+               s.wcru_on_widthdraw += quantity;
+            } else {
+               eosio::check(false, "Only CRU or WCRU symbols can be unstaked");
+            };
+         });
+      }
+
+     action(
        permission_level{_self,"active"_n},
        _tokenlock,
        name("chlbal"),
        std::make_tuple(username, - quantity, uint64_t(2))
      ).send();
+
    }
 
    void system_contract::getreward(const eosio::name username, const eosio::asset to_withdraw){

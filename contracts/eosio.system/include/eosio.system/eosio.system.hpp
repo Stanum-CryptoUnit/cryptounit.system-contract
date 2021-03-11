@@ -186,6 +186,22 @@ namespace eosiosystem {
     
 
 
+  struct [[eosio::table, eosio::contract("eosio.system")]] stakers3 {
+    eosio::name username;
+    eosio::asset cru_on_widthdraw;
+    eosio::asset wcru_on_widthdraw;
+    eosio::time_point last_update_at;
+
+
+    uint64_t primary_key() const {return username.value;}
+    
+    EOSLIB_SERIALIZE(stakers3, (username)(cru_on_widthdraw)(wcru_on_widthdraw)(last_update_at))
+  };
+
+  typedef eosio::multi_index<"stakers3"_n, stakers3> stakers3_index;
+    
+
+
    struct [[eosio::table, eosio::contract("eosio.system")]] producer_info {
       name                  owner;
       double                total_votes = 0;
@@ -661,6 +677,8 @@ namespace eosiosystem {
          [[eosio::action]]
          void getreward(eosio::name username, eosio::asset to_withdraw);
 
+         [[eosio::action]]
+         void frwithdraw(const eosio::name username);
          
 
          using getreward_action = eosio::action_wrapper<"getreward"_n, &system_contract::getreward>;
